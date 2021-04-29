@@ -1,0 +1,315 @@
+<!Doctype html>
+<html>
+    <head>
+        <style>
+            *{
+                margin: 0;
+                padding: 0;
+            }
+            html, body { height: 100%; }
+            #wrapper{
+                position: :relative;
+                
+            }
+            canvas{
+                border:1px solid black;
+                margin-left: 30px;
+                margin-top:  40px;
+                position : absolute;
+            }
+            #graph{
+                z-index: -1;
+            }
+            #points{
+                z-index: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="wrapper">
+            <canvas id = "graph" ></canvas>
+            <canvas id = "points"></canvas>
+        </div>
+        
+        
+        <div id="info">
+            <input type="number" id="x" style="margin-left: 30px">
+            <input type="number" id="y" >
+            <button type="button" onclick="drawAll()">Draw</button>
+            <p id ="msg" style="color: red;margin-left: 30px"></p>
+        </div>
+        
+        <script>
+            var canvas = document.getElementById("graph");
+            var canvasPoints = document.getElementById("points");
+            
+            canvas.width = (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth);
+            canvas.width = canvas.width - ((canvas.width)%100) ;
+            canvas.height = (window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight);
+            canvas.height = canvas.height - ((canvas.height)%100) ;
+            console.log(canvas.width+" "+canvas.height);
+            
+            canvasPoints.width = canvas.width;
+            canvasPoints.height = canvas.height;
+            
+            var input = document.getElementById("info");
+            input.style.marginTop = canvas.height;
+            
+            
+            var origin_x = canvas.width/2;
+            var origin_y = canvas.height/2;
+            var pxlPerLine = 10;
+            var dotSize = 4;
+            var context = canvas.getContext("2d");
+            
+            for(var i = 0 ; i < canvas.width; i = i+pxlPerLine){
+                var color = "gray";
+                if(i == origin_x){
+                    color = "red";
+                }
+                else if( (i - origin_x)%100 == 0){
+                    color = "black";
+                }
+                
+                console.log("i-origin => "+ (i-origin_x) +" color => "+color);
+                context.beginPath();
+                context.moveTo(i,0);
+                context.lineTo(i,canvas.height);
+                context.strokeStyle = color;
+                context.stroke();
+                context.closePath();
+                context.fillStyle = "black";
+                context.arc(i, origin_y, 2 , 0, 2*Math.PI);
+                context.fill();
+            }
+            
+            for(var i = 0 ; i < canvas.height; i = i+10){
+                var color = "gray";
+                if(i == origin_y){
+                    color = "red";
+                }
+                else if( (i - origin_y)%100 == 0){
+                    color = "black";
+                }
+                
+                console.log("i-origin => "+ (i-origin_y) +" color => "+color);
+                context.beginPath();
+                context.moveTo(0,i);
+                context.lineTo(canvas.width,i);
+                context.strokeStyle = color;
+                context.stroke();
+                context.closePath();
+                context.fillStyle = "black";
+                context.arc(origin_x, i, 2 , 0, 2*Math.PI);
+                context.fill();
+            }
+            
+            
+            
+            /*drawPoint(10,10);
+            drawPoint(10,-10);
+            drawPoint(-10,-10);
+            drawPoint(18,37);
+            drawPoint(100,100);*/
+            
+            // Conves Hull Algorithm
+            var contextPoint = canvasPoints.getContext("2d");
+            
+            var answer = new Array();
+            var points = new Array();
+            var colinear = new Array();
+            
+            class Point{
+                constructor(x,y){
+                    this.x = x;
+                    this.y = y;
+                }
+                
+                isOutOfBound(){
+                    var pxl = this.convertToPixel();
+                    if(pxl.x < 0 || pxl.x > canvasPoints.width || pxl.y < 0 || pxl.y > canvasPoints.height){
+                        return true; 
+                    }
+                    return false;
+                }
+                
+                drawPoint(){
+                    var pxl = this.convertToPixel();
+                    contextPoint.beginPath();
+                    contextPoint.fillStyle = "red";
+                    contextPoint.arc(pxl.x, pxl.y, dotSize , 0, 2*Math.PI);
+                    contextPoint.fill();
+                    contextPoint.stroke();
+                    contextPoint.closePath();
+                }
+                
+                convertToPixel(){
+                    var pxl = new Object();
+                    pxl.x = origin_x + this.x * pxlPerLine;
+                    pxl.y = Math.abs(origin_y - this.y * pxlPerLine);
+                    return pxl;
+                }
+                
+            }
+            
+//            var p1 = new Point(7,4);
+//            var p2 = new Point(-7,7);
+//            var p3 = new Point(7,-10);
+//            var p4 = new Point(5,2);
+//            var p5 = new Point(4,5);
+//            var p6 = new Point(-4,-7);
+//            var p7 = new Point(3,9);
+//            var p8 = new Point(-2,4);
+//            points.push(p1);
+//            points.push(p2);
+//            points.push(p3);
+//            points.push(p4);
+//            points.push(p5);
+//            points.push(p6);
+//            points.push(p7);
+//            points.push(p8);
+            
+            function crossProduct(a,b,c){
+                var x1 = b.x - a.x;
+		        var x2 = c.x - a.x;
+		        var y1 = b.y - a.y;
+		        var y2 = c.y - a.y;
+		        var crsprd = y2*x1 - y1*x2;
+		        return crsprd;
+            }
+            
+            function distance(a,b,c){
+                var abDis =  (Math.pow(a.x - b.x, 2)+ Math.pow(a.y - b.y, 2));
+		        var acDis =  (Math.pow(a.x - c.x, 2)+ Math.pow(a.y - c.y, 2));
+		        if(abDis == acDis) {
+                    return 0;
+		        }
+		        else if(abDis > acDis) {
+			        return 1;
+		        }
+                else{
+                    return -1;
+                }
+            }
+            
+            
+            
+            function getBoundaryPoints(){
+                answer = [];
+                var pointsNum = points.length;
+                if(pointsNum < 2){
+                    return;
+                }
+                var start = points[0];
+                
+		        for(var i = 1; i < pointsNum; i++) {
+		        	if(points[i].x < start.x) {
+		        		start = points[i]; 
+		        	}
+		        }
+                answer.push(start);
+                var nextTarget = start;
+                var count = 0;
+                while(true){
+					count++;
+					if(count == 1000){
+						break;
+					}
+                    var a = nextTarget;
+                    var b = points[0];
+                    if(a.x == b.x && a.y == b.y){
+                       b = points[1];
+                    }
+                    var c = null;
+                    for(var i = 0; i < pointsNum; i++ ){
+                        c = points[i];
+                        if((c.x == a.x && c.y == a.y)||(c.x == b.x && c.y == b.y)){
+                            continue;
+                        }
+                        var crsprd = crossProduct(a,b,c);
+                        if(crsprd > 0){
+                            b = c;
+                            colinear = [];
+                            continue;
+                        }
+                        else if(crsprd < 0){
+                            continue;
+                        }
+                        else{
+                            var dis = distance(a,b,c);
+                            if(dis > 0){
+                                colinear.push(c);
+                            }
+                            else{
+                                colinear.push(b);
+                                b = c;
+                            }
+                        }
+                        
+                    }
+                    
+                    var len = colinear.length;
+                    for(var i = 0; i < len; i++){
+                        answer.push(colinear[i]);
+                    }
+                    
+                    colinear = [];
+                    answer.push(b);
+                    
+                    nextTarget = b;
+                    if(nextTarget.x == start.x && nextTarget.y == start.y){
+                        break;
+                    }
+                   
+                }
+            }
+            
+            
+            function makeBoundry(){
+                var len = answer.length;
+                if(len == 0){
+                    return;
+                }
+                contextPoint.beginPath();
+                var p1 = answer[0].convertToPixel();
+                contextPoint.moveTo(p1.x,p1.y);
+                for(var i = 1; i < len; i++){
+                    var p = answer[i].convertToPixel();
+                    contextPoint.lineTo(p.x,p.y);
+                }
+                contextPoint.strokeStyle = "blue";
+                contextPoint.stroke();
+                contextPoint.closePath();
+            }
+            
+            
+            function drawAll(){
+                
+                var x = document.getElementById("x").value;
+                var y = document.getElementById("y").value;
+                var p = new Point(x,y);
+                var msg = document.getElementById("msg");
+                if(p.isOutOfBound()){
+                    msg.innerHTML = "Entered vertex out of bound";
+                }
+                else{
+                    points.push(p);
+                    contextPoint.clearRect(0,0,canvasPoints.width,canvasPoints.height);
+                    var len = points.length;
+                    for(var i = 0; i < len; i++){
+                        points[i].drawPoint();
+                    }
+                    getBoundaryPoints();
+                    makeBoundry();
+                    msg.innerHTML = "Vertex Graphed successfully";
+                }
+                
+            }
+            
+            
+            
+        </script>
+    </body>
+    
+    
+</html>
